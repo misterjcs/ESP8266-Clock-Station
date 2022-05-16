@@ -3,3 +3,4 @@
 坑 https://bbs.hassbian.com/thread-13346-1-17.html
 https://blog.csdn.net/Linux_Everything/article/details/107241057
 https://arduinojson.org/v6/assistant/#/step1
+https://gitee.com/airijia/esphome-config/blob/master/dev/weather-station.yaml
