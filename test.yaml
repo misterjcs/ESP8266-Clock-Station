@@ -1,0 +1,174 @@
+esphome:
+  name: test
+
+esp8266:
+  board: nodemcuv2
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api: 
+  password: !secret api_password
+  reboot_timeout: 0s
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret ap_ssid
+    password: !secret ap_password
+    
+ota:
+  safe_mode: true
+  password: !secret ota_password
+
+captive_portal:
+
+time:
+  - platform: sntp
+    id: sntp_time
+    servers: "ntp3.aliyun.com"
+    setup_priority: -100
+
+font:
+  - file: "font1.ttf"
+    id: time_font1
+    size: 50
+  - file: "font1.ttf"
+    id: time_font3
+    size: 25  
+  - file: "font1.ttf"
+    id: time_font4
+    size: 20 
+    glyphs: 当前温湿度气压.%/:-~+° 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz    
+  - file: "font.ttf"  
+    id: font2
+    size: 15
+    glyphs: 当前温湿度气压.%/:-~+° 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+  - file: "font1.ttf"  
+    id: font3
+    size: 25
+    glyphs: 当前温湿度气压.%/:-~+° 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+  - file: "font1.ttf"
+    id: font4
+    size: 33 
+
+spi:
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+
+i2c:
+  sda: GPIO05
+  scl: GPIO04
+  scan: true
+
+output:
+  - platform: gpio
+    pin: GPIO16
+    id: tft
+
+switch:
+  - platform: output
+    name: "屏幕开关"
+    output: tft
+    restore_mode: ALWAYS_ON
+    id: screen
+   
+color: 
+  - id: black
+    white: 0%
+  - id: green
+    red: 0%
+    green: 75%
+    blue: 40% 
+  - id: white
+    red: 90%
+    green: 90%
+    blue: 90% 
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO12
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    setup_priority: -100
+    name: "Click"
+    internal: true
+    on_click:
+      - min_length: 10ms
+        max_length: 350ms
+        then:
+          - display.page.show_next: my_display
+          - component.update: my_display
+      - min_length: 1s
+        max_length: 5s
+        then:
+          - switch.toggle: screen
+          
+sensor:
+  - platform: aht10
+    temperature:
+      name: "AHT10温度"
+      accuracy_decimals: 1
+      id: AHT10_temp
+    humidity:
+      name: "AHT10湿度"
+      accuracy_decimals: 1
+      id: AHT10_hum
+    update_interval: 60s
+    setup_priority: -100  
+  - platform: homeassistant
+    name: "Temperature Sensor From Home Assistant"
+    id: temp
+    entity_id: sensor.home_wen_du
+  - platform: homeassistant
+    name: "Humidity Sensor From Home Assistant"
+    id: hum
+    entity_id: sensor.home_shi_du
+  - platform: homeassistant
+    name: "Pressure Sensor From Home Assistant"
+    id: press
+    entity_id: sensor.home_qi_ya
+    
+display:
+  - platform: st7735
+    model: "INITR_GREENTAB"
+    reset_pin: GPIO02
+    cs_pin: GPIO15
+    dc_pin: GPIO00
+    device_width: 128
+    device_height: 128
+    col_start: 0
+    row_start: 3
+    rotation: 90
+    eight_bit_color: true
+    use_bgr: true
+    setup_priority: -100
+    id: my_display
+    pages:
+      - id: page1
+        lambda: |-
+          it.filled_rectangle(0,0,128,128,id(black));
+          
+          it.strftime(it.get_width()/5*3+1, it.get_height()/2-9, id(time_font1), id(green), TextAlign::CENTER,"%M", id(sntp_time).now());
+          it.strftime(0, 0, id(time_font4), id(green), TextAlign::TOP_LEFT, "%b %d", id(sntp_time).now());
+          
+          it.strftime(it.get_width()/5, it.get_height()/2-9, id(time_font1), id(white), TextAlign::CENTER,"%H", id(sntp_time).now());
+          it.strftime(it.get_width()-13, it.get_height()/2, id(time_font3), id(white), TextAlign::CENTER,"%S", id(sntp_time).now());
+          it.strftime(it.get_width(), 0, id(time_font4), id(white), TextAlign::TOP_RIGHT, "%A", id(sntp_time).now());
+          it.printf(0, it.get_height()/6*5-2, id(font2), id(green), TextAlign::BOTTOM_LEFT,"温度");
+          it.printf(it.get_width()/2, it.get_height()/6*5-2, id(font2), id(green), TextAlign::BOTTOM_LEFT,"湿度");          
+          it.printf(0, it.get_height(), id(font3), id(white), TextAlign::BOTTOM_LEFT,"%.1f", id(AHT10_temp).state);
+          it.printf(it.get_width(), it.get_height(), id(font3), id(white), TextAlign::BOTTOM_RIGHT,"%.1f", id(AHT10_hum).state);
+          
+      - id: page2
+        lambda: |-
+          it.filled_rectangle(0,0,128,128,id(black));
+          
+          it.printf(it.get_width()-6, 6, id(time_font4), id(white), TextAlign::TOP_RIGHT,"%.1f", id(temp).state);          
